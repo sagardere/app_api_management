@@ -1,0 +1,27 @@
+PROCEDURE "sp_Throttle_check"(
+ IN APPNAME NVARCHAR(500),
+ IN IPADDRESS NVARCHAR(50),
+ OUT STATUS VARCHAR(10)
+)
+ LANGUAGE SQLSCRIPT
+   SQL SECURITY DEFINER AS
+   --DEFAULT SCHEMA <default_schema_name>
+   --READS SQL DATA AS
+BEGIN
+DECLARE VI_COUNT INT := 0;
+DECLARE EXIT HANDLER FOR SQLEXCEPTION RESIGNAL ;
+
+/****************************************************************************
+    Compare the values with the config table for IP Address check
+******************************************************************************/
+SELECT count('CLIENT_IP') into VI_COUNT FROM  "syn_m_connections" as a
+where "APPNAME"= a.USER_NAME
+and "IPADDRESS"= a.CLIENT_IP
+and a.START_TIME = (select (ADD_SECONDS(max('START_TIME'),-60))FROM  "syn_m_connections");
+
+IF VI_COUNT < 5
+THEN STATUS :='FALSE';
+ELSE STATUS :='TRUE';
+END IF;
+
+END

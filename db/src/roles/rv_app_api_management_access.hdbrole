@@ -1,0 +1,16 @@
+{
+  "role": {
+    "name": "rv_app_api_management_access",
+    "schema_privileges": [
+      {
+        "privileges": [
+          "SELECT",
+          "INSERT",
+          "UPDATE",
+          "EXECUTE",
+          "DELETE"
+        ]
+      }
+    ]
+  }
+}

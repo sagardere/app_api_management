@@ -1,0 +1,14 @@
+{
+  "syn_tbl_api_mgmt_config": {
+    "target": {
+      "object": "T_API_MGMT_CONFIG",
+      "schema": "DAT_EBI"
+    }
+  },
+  "syn_m_connections": {
+    "target": {
+      "object": "M_CONNECTIONS",
+      "schema": "SYS"
+    }
+  }
+} 
