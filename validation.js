@@ -8,17 +8,6 @@ function validateRequest(options, callback) {
     //options = normalizeOptions(options);
     console.log("After normalize");
     console.log(JSON.stringify(options));
-    var config = {
-      "appName": "app_mendix_bids",
-      "apiName": "app_mendix_bids/testAPI",
-      "environment": "HD3",
-      "ipAddress": "130.30.17.119",
-      "throttleCount": 1000,
-      "enabled": "Y",
-      "hostDNS": "ldcosaphana2.is.agilent.net:50505",
-      "procedureName": "syn_sp_api_management",
-      "services": services
-    };
 
     if (options && options.services && options.services.hanaConfig) {
       hdbext.createConnection(options.services.hanaConfig, function(connectionError, client) {
