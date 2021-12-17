@@ -27,7 +27,7 @@ function validateRequest(options, callback) {
 
           if(options.apiName) {
             var procedureName = options.procedureName;
-            hdbext.loadProcedure(client, '', "syn_sp_api_management", function(err, sp) {
+            hdbext.loadProcedure(client, '', "sp_api_management", function(err, sp) {
               console.log('###########');
               console.log(err);
               console.log(sp);
