@@ -1,0 +1,22 @@
+{
+	"name": "app_api_management",
+	"description": "",
+	"version": "1.0.0",
+	"main": "server.js",
+	"scripts": {
+		"start": "node server.js"
+	},
+	"files": [],
+	"publishConfig": {
+		"registry": "https://registry.npmjs.org/"
+	},
+	"repository": {
+		"url": "git://github.com/sagardere/app_api_management.git"
+	},
+	"devDependencies": {
+		"@sap/hdbext": "^7.4.1"
+	},
+	"engines": {
+		"node": "12.18"
+	}
+}
