@@ -11,6 +11,10 @@ function validateRequest(options, callback) {
 
     if (options && options.services && options.services.hanaConfig) {
       hdbext.createConnection(options.services.hanaConfig, function(connectionError, client) {
+        console.log('>>>>>>>>>>>>>>>');
+        console.log(connectionError);
+        console.log(client);
+
         if (connectionError) {
           return callback(connectionError);
         } else {
@@ -23,8 +27,8 @@ function validateRequest(options, callback) {
 
           if(options.apiName) {
             var procedureName = options.procedureName;
-            hdbext.loadProcedure(client, '', procedureName, function(err, sp) {
-              console.log("Inside SP.");
+            hdbext.loadProcedure(client, '', "syn_sp_api_management", function(err, sp) {
+              console.log('###########');
               console.log(err);
               console.log(sp);
               if (!err && sp) {             
@@ -109,4 +113,5 @@ function normalizeOptions(options) {
 }
 
 module.exports.validateRequest = validateRequest;
+
 
