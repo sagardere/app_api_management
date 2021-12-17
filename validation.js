@@ -8,6 +8,17 @@ function validateRequest(options, callback) {
     //options = normalizeOptions(options);
     console.log("After normalize");
     console.log(JSON.stringify(options));
+    var config = {
+      "appName": "app_mendix_bids",
+      "apiName": "app_mendix_bids/testAPI",
+      "environment": "HD3",
+      "ipAddress": "130.30.17.119",
+      "throttleCount": 1000,
+      "enabled": "Y",
+      "hostDNS": "ldcosaphana2.is.agilent.net:50505",
+      "procedureName": "syn_sp_api_management",
+      "services": services
+    };
 
     if (options && options.services && options.services.hanaConfig) {
       hdbext.createConnection(options.services.hanaConfig, function(connectionError, client) {
@@ -21,7 +32,7 @@ function validateRequest(options, callback) {
 
           //return callback(null, statusOfRequest);
 
-          if(apiName && options.environment && options.hostDNS && options.ipAddress) {
+          if(options.apiName) {
             var procedureName = options.procedureName;
             hdbext.loadProcedure(client, '', procedureName, function(err, sp) {
               console.log("Inside SP.");
@@ -43,7 +54,7 @@ function validateRequest(options, callback) {
                   console.log("result");
                   console.log(result);
 
-                  if (parameters && parameters.STATUS && (parameters.STATUS === 'true' || parameters.STATUS === true)) {
+                  if (parameters && parameters.STATUS && (parameters.STATUS === 'TRUE' || parameters.STATUS === TRUE)) {
                     statusOfRequest = true;
                     return callback(null, statusOfRequest);
                   } else {
