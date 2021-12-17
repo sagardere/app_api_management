@@ -1,117 +1,149 @@
 var hdbext = require("@sap/hdbext");
+var apiProcedureName = "sp_api_management";
+var throttleProcedureName = "sp_Throttle_check";
 
-console.log('Calling validateRequest');
-function validateRequest(options, callback) {
+function validateRequest(options, finalCB) {
+  console.log('Calling validateRequest');
   try {
-    console.log("Before normalize");
-    console.log(JSON.stringify(options));
-    //options = normalizeOptions(options);
-    console.log("After normalize");
-    console.log(JSON.stringify(options));
+    options = normalizeOptions(options);
 
     if (options && options.services && options.services.hanaConfig) {
       hdbext.createConnection(options.services.hanaConfig, function(connectionError, client) {
-        console.log('>>>>>>>>>>>>>>>');
+        console.log('>>>>>> Inside Client >>>>>>>>>');
         console.log(connectionError);
         console.log(client);
 
         if (connectionError) {
           return callback(connectionError);
         } else {
-          console.log("Inside client.");
-          console.log(client);
           var statusOfRequest = false;
-          var error = "";
-
-          //return callback(null, statusOfRequest);
-
-          if(options.apiName) {
-            var procedureName = options.procedureName;
-            hdbext.loadProcedure(client, '', "sp_api_management", function(err, sp) {
-              console.log('###########');
+          var errorMsg = "";
+          async.parallel([(parallelCB) => {
+            hdbext.loadProcedure(client, '', apiProcedureName, function(err, sp) {
+              console.log('>>>>>> Inside 1st Parrallel >>>>>>>>>');
               console.log(err);
               console.log(sp);
-              if (!err && sp) {             
+              if (!err && sp) {
                 sp({
-                  "AppName": options.appName,
-                  "APIName": options.apiName,
-                  "Environment": options.environment,
-                  "IPAddress": options.ipAddress,
-                  "ThrottleCount": options.throttleCount, 
-                  "Enabled": options.enabled,
-                  "Host_dns": options.hostDNS
+                  "APPNAME": options.APPNAME,
+                  "APINAME": options.APINAME,
+                  "ENVIRONMENT": options.ENVIRONMENT,
+                  "IPADDRESS": options.IPADDRESS,
+                  "Host_dns": options.Host_dns,
+                  "STATUS": ""
                 }, function(err, parameters, result) {
-                  console.log("err");
+                  console.log('>>>>>> Inside 1st Parrallel Result >>>>>>>>>');
+                  console.log(">> err >>");
                   console.log(err);
-                  console.log("parameters");
+                  console.log(">> parameters >>");
                   console.log(parameters);
-                  console.log("result");
+                  console.log(">> result >>");
                   console.log(result);
-
-                  if (parameters && parameters.STATUS && (parameters.STATUS === 'TRUE' || parameters.STATUS === TRUE)) {
+                  if (parameters && parameters.STATUS && parameters.STATUS === 'TRUE') {
                     statusOfRequest = true;
-                    return callback(null, statusOfRequest);
+                    parallelCB(null, statusOfRequest);
+                  } else if (err) {
+                    parallelCB(err);
                   } else {
-                    error = "Unauthorized request.";
-                    return callback(error);
+                    errorMsg = "Invalid IP address or Host name.";
+                    parallelCB(errorMsg);
                   }
                 });
               } else {
-                error = `Procedure ${procedureName} not found.`;
-                return callback(error);
+                errorMsg = `Procedure ${apiProcedureName} not found.`;
+                parallelCB(errorMsg);
               }
             });
-          } else {
-            error = "Please enter the all keys in options object.";
-            return callback(error);
-          }
+          }, function(parallelCB) {
+            hdbext.loadProcedure(client, '', throttleProcedureName, function(err, sp) {
+              console.log('>>>>>> Inside 2nd Parrallel >>>>>>>>>');
+              console.log(err);
+              console.log(sp);
+              if (!err && sp) {
+                sp({
+                  "APPNAME": options.APPNAME,
+                  "IPADDRESS": options.IPADDRESS
+                }, function(err, parameters, result) {
+                  console.log('>>>>>> Inside 2nd Parrallel Result >>>>>>>>>');
+                  console.log(">> err >>");
+                  console.log(err);
+                  console.log(">> parameters >>");
+                  console.log(parameters);
+                  console.log(">> result >>");
+                  console.log(result);
+                  if (parameters && parameters.STATUS && parameters.STATUS === 'TRUE') {
+                    statusOfRequest = true;
+                    parallelCB(null, statusOfRequest);
+                  } else if (err) {
+                    parallelCB(err);
+                  } else {
+                    errorMsg = "You have exceeded the 1000 requests in 1 min limit!";
+                    parallelCB(errorMsg);
+                  }
+                });
+              } else {
+                errorMsg = `Procedure ${throttleProcedureName} not found.`;
+                parallelCB(errorMsg);
+              }
+            });
+          }], function done(parallelErr, parallelResults) {
+            if (err) {
+              finalCB(parallelErr);
+            } else {
+              finalCB(null, parallelResults);
+            }
+          });
         }
       });
     } else {
       var err = "Please enter the services key in options object.";
-      return callback(err);
+      return finalCB(err);
     }
   } catch (throwingError) {
-    return callback(throwingError);
+    return finalCB(throwingError);
   }
 }
 
 function normalizeOptions(options) {
-  options = JSON.parse(JSON.stringify(options))
+  try {
+    options = JSON.parse(JSON.stringify(options))
 
-  if (options.appName) {
-    options.appName = options.appName;
-  } else {
-    options.appName = "";
-  }
+    if (options && options.appName) {
+      options.appName = options.appName;
+    } else {
+      options.appName = "";
+    }
 
-  if (options.apiName) {
-    options.apiName = options.apiName;
-  } else {
-    options.apiName = "";
-  }
+    if (options && options.apiName) {
+      options.apiName = options.apiName;
+    } else {
+      options.apiName = "";
+    }
 
-  if (options.environment) {
-    options.environment = options.environment;
-  } else {
-    options.environment = "";
-  }
+    if (options && options.environment) {
+      options.environment = options.environment;
+    } else {
+      options.environment = "";
+    }
 
-  if (options.IPADDRESS) {
-    options.IPADDRESS = options.IPADDRESS;
-  } else {
-    options.IPADDRESS = "";
-  }
-  
-  if (options.Host_dns) {
-    options.Host_dns = options.Host_dns;
-  } else {
-    options.Host_dns = "";
-  }
+    if (options && options.IPADDRESS) {
+      options.IPADDRESS = options.IPADDRESS;
+    } else {
+      options.IPADDRESS = "";
+    }
 
-  return options;
+    if (options && options.Host_dns) {
+      options.Host_dns = options.Host_dns;
+    } else {
+      options.Host_dns = "";
+    }
+
+    return options;
+  } catch (throwingError) {
+    console.log(">>>>> throwingError >>>>>>");
+    console.log(throwingError);
+    return options;
+  }
 }
 
 module.exports.validateRequest = validateRequest;
-
-
