@@ -25,6 +25,7 @@ function validateRequest(options, callback) {
             var procedureName = options.procedureName;
             hdbext.loadProcedure(client, '', procedureName, function(err, sp) {
               console.log("Inside SP.");
+              console.log(err);
               console.log(sp);
               if (!err && sp) {             
                 sp({
