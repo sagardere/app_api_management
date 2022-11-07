@@ -1,9 +1,0 @@
-{
-"container_super_user-grantor": {
-    "object_owner" : {
-      "global_roles":["XSA_GR_SELECT_ECC_SCHEMA"],
-      "schema_roles" : [
-	 { "schema" : "DAT_EBI","roles_with_admin_option" : [ "ra_dat_ebi_admin#" ] }]
-    }
-  }
-}

@@ -8,9 +8,7 @@
 	},
 	"files": [
 		"validation.js",
-		"mta.yaml",
 		"index.js",
-		"db",
 		"lib"
 	],
 	"publishConfig": {
