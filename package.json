@@ -1,7 +1,7 @@
 {
 	"name": "app_api_management_new",
 	"description": "",
-	"version": "1.0.13",
+	"version": "1.0.14",
 	"main": "index.js",
 	"scripts": {
 		"start": "node index.js"
@@ -10,7 +10,7 @@
 		"validation.js",
 		"index.js",
 		"lib"
-	],
+	], 
 	"publishConfig": {
 		"registry": "https://registry.npmjs.org/"
 	},
