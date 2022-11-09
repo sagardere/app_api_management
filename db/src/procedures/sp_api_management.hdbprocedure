@@ -1,0 +1,37 @@
+PROCEDURE "sp_api_management"
+( 
+IN APPNAME NVARCHAR(500),
+IN APINAME NVARCHAR(500),
+IN ENVIRONMENT NVARCHAR(10),
+IN IPADDRESS NVARCHAR(50),
+IN Host_dns NVARCHAR(50),
+OUT STATUS VARCHAR(10)
+)
+
+   LANGUAGE SQLSCRIPT
+   SQL SECURITY DEFINER AS
+   --DEFAULT SCHEMA <default_schema_name>
+   --READS SQL DATA AS
+BEGIN
+DECLARE VI_COUNT INT := 0;
+DECLARE EXIT HANDLER FOR SQLEXCEPTION RESIGNAL ;
+
+/****************************************************************************
+    Compare the values with the config table for IP Address check
+******************************************************************************/
+
+ SELECT
+COUNT(*) into VI_COUNT
+FROM "syn_tbl_api_mgmt_config"
+WHERE "AppName"= :APPNAME
+AND "APIName"= :APINAME
+AND "IPAddress"= :IPADDRESS
+AND "Host_dns"= :Host_dns
+AND "Enabled"= 'Y';
+
+IF VI_COUNT = 0
+THEN STATUS :='FALSE';
+ELSE STATUS :='TRUE';
+END IF;
+
+END

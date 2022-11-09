@@ -1,0 +1,13 @@
+{
+  "role": {
+    "name": "rv_app_api_management_viewer",
+    "schema_privileges": [
+      {
+        "privileges": [
+          "SELECT",
+          "EXECUTE"
+        ]
+      }
+    ]
+  }
+}
