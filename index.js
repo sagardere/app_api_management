@@ -3,28 +3,28 @@
 const axios = require("axios");
 const url = require("url");
 const xsenv = require("@sap/xsenv");
-const https = require('https');
+const https = require("https");
 const nodemailer = require("nodemailer");
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
 
 function validateRequest(req, options, callback) {
-  console.log('>> Calling validateRequest.');
+  console.log(">> Calling validateRequest.");
   try {
     // Validating options object data.
-    if (typeof options !== 'object') {
-      return callback('Enter the correct options which type is object.');
+    if (typeof options !== "object") {
+      return callback("Enter the correct options which type is object.");
     }
 
     let auditData = {};
-    auditData.APPNAME = '';
-    auditData.FUNCTIONNAME = '';
-    auditData.IPADDRESS = '';
-    auditData.PARAMETER = '';
-    auditData.HOSTDNS = '';
-    auditData.ENVIRONMENT = '';
-    auditData.APIURL = '';
+    auditData.APPNAME = "";
+    auditData.FUNCTIONNAME = "";
+    auditData.IPADDRESS = "";
+    auditData.PARAMETER = "";
+    auditData.HOSTDNS = "";
+    auditData.ENVIRONMENT = "";
+    auditData.APIURL = "";
 
     if (!options.APP_XSA_JOBS) {
       throw "Please enter the app xsa jobs ups object in options.";
@@ -50,7 +50,7 @@ function validateRequest(req, options, callback) {
     if (options.APPNAME) {
       auditData.APPNAME = options.APPNAME;
     } else if (options.VCAP_APPLICATION) {
-      auditData.APPNAME = options.VCAP_APPLICATION.application_name.split('-')[0].toUpperCase();
+      auditData.APPNAME = options.VCAP_APPLICATION.application_name.split("-")[0].toUpperCase();
     } else {
       throw "Not able to get the APPNAME from VCAP_APPLICATION object or options object.";
     }
@@ -98,40 +98,47 @@ function validateRequest(req, options, callback) {
       auditData.ENVIRONMENT = options.VCAP_SERVICES.hana[0].credentials.tenant_name;
     } else {
       throw "Not able to get the ENVIRONMENT from service object or options object.";
+    
     }
+    console.log("auditData");
+    console.log(auditData);
 
     // Creating url to call the app integration framework API for validating request.
     auditData.APIURL = auditData.APP_XSA_JOBS.APIMgmtHost + auditData.APP_XSA_JOBS.validateInboundRoute;
     let config = {
       httpsAgent,
-      method: 'post',
+      method: "post",
       withCredentials: true,
       auth: {
-        'username': auditData.APP_XSA_JOBS.userName,
-        'password': auditData.APP_XSA_JOBS.password
+        "username": auditData.APP_XSA_JOBS.userName,
+        "password": auditData.APP_XSA_JOBS.password
       },
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       }
     };
-   
+    console.log("config");
+    console.log(config);
     console.log("### Calling Framework URL : " + auditData.APIURL + " ###");
     axios.post(auditData.APIURL, {
         "auditData": auditData
       }, config)
       .then(function(resp) {
+        console.log("Successfully validated request in App Integration Management Framework.");
         auditData.APP_ENABLE_FLAG = (resp && resp.data && resp.data.APP_ENABLE_FLAG) ? resp.data.APP_ENABLE_FLAG : false;
         auditData.REQUESTID = (resp && resp.data && resp.data.REQUESTID) ? resp.data.REQUESTID : null;
         callback(null, {
-          'APP_ENABLE_FLAG': auditData.APP_ENABLE_FLAG,
-          'REQUESTID': auditData.REQUESTID
+          "APP_ENABLE_FLAG": auditData.APP_ENABLE_FLAG,
+          "REQUESTID": auditData.REQUESTID,
+          "config": config,
+          "auditData": auditData
         });
       })
       .catch(function(error) {
         auditData.APP_ENABLE_FLAG = false;
         if (error.response && error.response.status && error.response.status > 500) {
           // If App Integration Management Framework is not reachable then skipping validation but executing HANA model and sending email.
-          console.log('App Integration Management Framework is Not Reachable, Skipping Validation.');
+          console.log("App Integration Management Framework is Not Reachable, Skipping Validation.");
           console.log("## Status code : " + error.response.status);
 
           sendFailureEmail(auditData, (emailError, emailResp) => {
@@ -139,8 +146,8 @@ function validateRequest(req, options, callback) {
               console.log(emailError);
             }
             return callback(null, {
-              'APP_ENABLE_FLAG': auditData.APP_ENABLE_FLAG,
-              'REQUESTID': auditData.REQUESTID
+              "APP_ENABLE_FLAG'": auditData.APP_ENABLE_FLAG,
+              "REQUESTID": auditData.REQUESTID
             });
           });
         } else if (error.response && error.response.data) {
@@ -148,14 +155,14 @@ function validateRequest(req, options, callback) {
           return callback(error.response.data);
         } else {
           // Something happened in setting up the request that triggered an Error
-          console.log('## Error to calling framework : ' + error.message);
+          console.log("## Error to calling framework : " + error.message);
           return callback(error.message);
         }
       });
   } catch (throwingError) {
     callback(throwingError);
   }
-};
+}
 
 // To send the failure email.
 function sendFailureEmail(auditData, callback) {
@@ -164,10 +171,10 @@ function sendFailureEmail(auditData, callback) {
     console.log(transporter);
 
     const mailOptions = {
-      'from': auditData.APP_XSA_JOBS.mailForm,
-      'to': auditData.APP_XSA_JOBS.failureMailTo,
-      'subject': `${auditData.ENVIRONMENT} - APP_INTEGRATION_MANAGEMENT: Error for ${auditData.APPNAME} Application`,
-      'html': `Dear User,<br/>
+      "from": auditData.APP_XSA_JOBS.mailForm,
+      "to": auditData.APP_XSA_JOBS.failureMailTo,
+      "subject": `${auditData.ENVIRONMENT} - APP_INTEGRATION_MANAGEMENT: Error for ${auditData.APPNAME} Application`,
+      "html": `Dear User,<br/>
                   <br/> <b>APP NAME:</b> ${auditData.APPNAME}
                   <br/> <b>MESSAGE:</b>  Validation of inbound request failed !!
                   <br/> <b>ERROR DETAILS:</b> App Integration Management Framework is Not Reachable.
@@ -177,18 +184,18 @@ function sendFailureEmail(auditData, callback) {
     };
     transporter.sendMail(mailOptions, function(error, info) {
       if (error) {
-        console.log('## Error to sending email.');
+        console.log("## Error to sending email.");
         console.log(error);
       } else {
-        console.log('## Email sent to : ' + auditData.APP_XSA_JOBS.failureMailTo);
+        console.log("## Email sent to : " + auditData.APP_XSA_JOBS.failureMailTo);
         console.log(info);
       }
       callback(null);
     });
   } catch (throwingError) {
-    console.log('## Error to sending email : ' + throwingError);
+    console.log("## Error to sending email : " + throwingError);
     callback(null);
   }
-};
+}
 
 module.exports = validateRequest;
