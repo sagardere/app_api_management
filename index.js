@@ -58,6 +58,10 @@ exports.validateRequest = async function(req, options, callback) {
     delete auditData.SMTP_EMAIL_UPS;
     delete auditData.SERVICES;
 
+    // return callback(null, {
+    //   "auditData": auditData
+    // });
+
     console.log("### Calling Framework URL : " + auditData.VALIDATE_ROUTE + " ###");
     axios.post(auditData.VALIDATE_ROUTE, {
         "auditData": auditData
@@ -119,19 +123,30 @@ exports.saveAuditDetails = function(req, res, RECORDCOUNT) {
       auditData.ERRORDETAILS = res.statusMessage ? res.statusMessage : "";
       const decipher = crypto.createDecipheriv(algorithm, key, iv);
       var DECRYPTED = decipher.update(auditData.ENCRYPTED, 'hex', 'utf8') + decipher.final('utf8');
+      console.log('DECRYPTED');
+      console.log(DECRYPTED);
+
       config.auth = {
         "username": DECRYPTED.split("<@#@#@>")[0],
         "password": DECRYPTED.split("<@#@#@>")[1]
       };
 
+      console.log('config');
+      console.log(config);
+
+      console.log('auditData.AUDIT_ROUTE');
+      console.log(auditData.AUDIT_ROUTE);
+      
       axios.post(auditData.AUDIT_ROUTE, {
           "auditData": auditData
-        }, auditData.config)
+        }, config)
         .then(function(resp) {
           console.log(`## Successfully saved audit details for request ID : "${auditData.REQUESTID}"`);
+          console.log(resp);
         })
         .catch(function(error) {
           console.log(`## Error to saving audit details for request ID : "${auditData.REQUESTID}"`);
+          console.log(error);
         });
     } else {
       console.log("## Application enable flag is not enabled, Skipping audit log store data.");
