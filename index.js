@@ -6,6 +6,7 @@ const xsenv = require("@sap/xsenv");
 const https = require("https");
 const nodemailer = require("nodemailer");
 const hdbext = require("@sap/hdbext");
+const dns = require('dns');
 const crypto = require('crypto');
 const algorithm = "aes-192-cbc";
 const secret = "my-secret-key";
@@ -123,20 +124,11 @@ exports.saveAuditDetails = function(req, res, RECORDCOUNT) {
       auditData.ERRORDETAILS = res.statusMessage ? res.statusMessage : "";
       const decipher = crypto.createDecipheriv(algorithm, key, iv);
       var DECRYPTED = decipher.update(auditData.ENCRYPTED, 'hex', 'utf8') + decipher.final('utf8');
-      console.log('DECRYPTED');
-      console.log(DECRYPTED);
-
       config.auth = {
         "username": DECRYPTED.split("<@#@#@>")[0],
         "password": DECRYPTED.split("<@#@#@>")[1]
       };
 
-      console.log('config');
-      console.log(config);
-
-      console.log('auditData.AUDIT_ROUTE');
-      console.log(auditData.AUDIT_ROUTE);
-      
       axios.post(auditData.AUDIT_ROUTE, {
           "auditData": auditData
         }, config)
@@ -230,11 +222,17 @@ function validateInputData(req, options) {
       reject("Not able to get the PARAMETER from req object or options object.");
     }
 
+    dns.reverse(req.connection.remoteAddress, function(err, domains) {
+      auditData.HOSTDNS = (domains && domains[0]) ? domains[0] : req.headers.host;
+    });
+
     // Getting Host Dns name from request object.
     if (options.HOSTDNS) {
       temp.HOSTDNS = options.HOSTDNS;
     } else if (req) {
-      temp.HOSTDNS = req.headers.host;
+          dns.reverse(req.connection.remoteAddress, function(err, domains) {
+      temp.HOSTDNS = (domains && domains[0]) ? domains[0] : req.headers.host;
+    });
     } else {
       reject("Not able to get the HOSTDNS from req object or options object.");
     }
