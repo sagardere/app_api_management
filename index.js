@@ -6,11 +6,26 @@ const xsenv = require("@sap/xsenv");
 const https = require("https");
 const nodemailer = require("nodemailer");
 const hdbext = require("@sap/hdbext");
+const crypto = require('crypto');
+const algorithm = "aes-192-cbc";
+const secret = "my-secret-key";
+const key = crypto.scryptSync(secret, 'salt', 24);
+const iv = crypto.randomBytes(16);
+
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
 
-async function validateRequest(req, options, callback) {
+let config = {
+  httpsAgent,
+  method: "post",
+  withCredentials: true,
+  headers: {
+    "Content-Type": "application/json"
+  }
+};
+
+exports.validateRequest = async function(req, options, callback) {
   console.log("## Calling validateRequest.");
   try {
     if (typeof options !== "object") {
@@ -28,33 +43,29 @@ async function validateRequest(req, options, callback) {
     }
 
     auditData.APP_ENABLE_FLAG = true;
-    auditData.APIURL = auditData.APP_XSA_JOBS.APIMgmtHost + auditData.APP_XSA_JOBS.validateInboundRoute;
-    let config = {
-      httpsAgent,
-      method: "post",
-      withCredentials: true,
-      auth: {
-        "username": auditData.APP_XSA_JOBS.userName,
-        "password": auditData.APP_XSA_JOBS.password
-      },
-      headers: {
-        "Content-Type": "application/json"
-      }
+    auditData.VALIDATE_ROUTE = auditData.APP_XSA_JOBS.APIMgmtHost + auditData.APP_XSA_JOBS.validateInboundRoute;
+    auditData.AUDIT_ROUTE = auditData.APP_XSA_JOBS.APIMgmtHost + auditData.APP_XSA_JOBS.auditInboundRoute;
+    config.auth = {
+      "username": auditData.APP_XSA_JOBS.userName,
+      "password": auditData.APP_XSA_JOBS.password
     };
+
+    const userAndPass = auditData.APP_XSA_JOBS.userName + "<@#@#@>" + auditData.APP_XSA_JOBS.password;
+    const cipher = crypto.createCipheriv(algorithm, key, iv);
+    auditData.ENCRYPTED = cipher.update(userAndPass, 'utf8', 'hex') + cipher.final('hex');
 
     delete auditData.APP_XSA_JOBS;
     delete auditData.SMTP_EMAIL_UPS;
     delete auditData.SERVICES;
 
-    console.log("### Calling Framework URL : " + auditData.APIURL + " ###");
-    console.log(auditData);
-    axios.post(auditData.APIURL, {
+    console.log("### Calling Framework URL : " + auditData.VALIDATE_ROUTE + " ###");
+    axios.post(auditData.VALIDATE_ROUTE, {
         "auditData": auditData
       }, config)
       .then(function(resp) {
         console.log("## Successfully validated request in App Integration Management Framework.");
         auditData.REQUESTID = (resp && resp.data && resp.data.REQUESTID) ? resp.data.REQUESTID : null;
-        callback(null, {
+        return callback(null, {
           "auditData": auditData
         });
       })
@@ -79,13 +90,55 @@ async function validateRequest(req, options, callback) {
         } else {
           // Something happened in setting up the request that triggered an Error
           console.log("## Error to calling framework : " + error.message);
-          return callback(error.message);
+          // Need to test.
+          // return callback(error.message);
+          auditData.ERROR = error.message;
+          return callback(null, {
+            "auditData": auditData
+          });
         }
       });
   } catch (throwingError) {
     console.log('## Inside validateRequest catch.');
     console.log(throwingError);
     callback(throwingError);
+  }
+};
+
+exports.saveAuditDetails = function(req, res, RECORDCOUNT) {
+  console.log("## Calling saveAuditDetails.");
+  try {
+    let auditData = {};
+    if (req && req.auditData) {
+      auditData = req.auditData;
+    }
+
+    if (auditData && auditData.APP_ENABLE_FLAG) {
+      auditData.RECORDCOUNT = RECORDCOUNT ? RECORDCOUNT : null;
+      auditData.HANASTATUS = (res.statusCode == "200" || res.statusCode == 200) ? "SUCCESS" : "FAILED";
+      auditData.ERRORDETAILS = res.statusMessage ? res.statusMessage : "";
+      const decipher = crypto.createDecipheriv(algorithm, key, iv);
+      var DECRYPTED = decipher.update(auditData.ENCRYPTED, 'hex', 'utf8') + decipher.final('utf8');
+      config.auth = {
+        "username": DECRYPTED.split("<@#@#@>")[0],
+        "password": DECRYPTED.split("<@#@#@>")[1]
+      };
+
+      axios.post(auditData.AUDIT_ROUTE, {
+          "auditData": auditData
+        }, auditData.config)
+        .then(function(resp) {
+          console.log(`## Successfully saved audit details for request ID : "${auditData.REQUESTID}"`);
+        })
+        .catch(function(error) {
+          console.log(`## Error to saving audit details for request ID : "${auditData.REQUESTID}"`);
+        });
+    } else {
+      console.log("## Application enable flag is not enabled, Skipping audit log store data.");
+    }
+  } catch (throwingError) {
+    console.log('## Inside saveAuditDetails catch.');
+    console.log(throwingError);
   }
 }
 
@@ -99,7 +152,6 @@ function validateInputData(req, options) {
     temp.PARAMETER = "";
     temp.HOSTDNS = "";
     temp.ENVIRONMENT = "";
-    temp.APIURL = "";
 
     if (!options.VCAP_APPLICATION) {
       reject("Please enter the VCAP_APPLICATION object in options.");
@@ -252,5 +304,3 @@ function sendFailureEmail(auditData, callback) {
     callback(null);
   }
 }
-
-module.exports = validateRequest;
