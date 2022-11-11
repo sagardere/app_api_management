@@ -1,7 +1,7 @@
 {
 	"name": "app_api_management_new",
 	"description": "",
-	"version": "1.0.23",
+	"version": "1.0.24",
 	"main": "index.js",
 	"scripts": {
 		"start": "node index.js"
@@ -27,6 +27,6 @@
 		"url": "^0.11.0",
 		"request": "2.88",
 		"crypto-js": "4.1.1",
-		"dns": "0.0.2"
+		"dns": "0.2.2"
 	}
 }
