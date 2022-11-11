@@ -56,12 +56,7 @@ exports.validateRequest = async function(req, options, callback) {
     auditData.ENCRYPTED = cipher.update(userAndPass, 'utf8', 'hex') + cipher.final('hex');
 
     delete auditData.APP_XSA_JOBS;
-    delete auditData.SMTP_EMAIL_UPS;
     delete auditData.SERVICES;
-
-    // return callback(null, {
-    //   "auditData": auditData
-    // });
 
     console.log("### Calling Framework URL : " + auditData.VALIDATE_ROUTE + " ###");
     axios.post(auditData.VALIDATE_ROUTE, {
@@ -80,11 +75,10 @@ exports.validateRequest = async function(req, options, callback) {
           // If App Integration Management Framework is not reachable then skipping validation but executing HANA model and sending email.
           console.log("App Integration Management Framework is Not Reachable, Skipping Validation.");
           console.log("## Status code : " + error.response.status);
+          console.log("## Error.response.headers : " + error.response.headers);
 
           sendFailureEmail(auditData, (emailError, emailResp) => {
-            if (emailError) {
-              console.log(emailError);
-            }
+            delete auditData.SMTP_EMAIL_UPS;
             return callback(null, {
               "auditData": auditData
             });
@@ -95,11 +89,13 @@ exports.validateRequest = async function(req, options, callback) {
         } else {
           // Something happened in setting up the request that triggered an Error
           console.log("## Error to calling framework : " + error.message);
-          // Need to test.
-          // return callback(error.message);
           auditData.ERROR = error.message;
-          return callback(null, {
-            "auditData": auditData
+
+          sendFailureEmail(auditData, (emailError, emailResp) => {
+            delete auditData.SMTP_EMAIL_UPS;
+            return callback(null, {
+              "auditData": auditData
+            });
           });
         }
       });
@@ -223,16 +219,16 @@ function validateInputData(req, options) {
     }
 
     dns.reverse(req.connection.remoteAddress, function(err, domains) {
-      auditData.HOSTDNS = (domains && domains[0]) ? domains[0] : req.headers.host;
+      temp.HOSTDNS = (domains && domains[0]) ? domains[0] : req.headers.host;
     });
 
     // Getting Host Dns name from request object.
     if (options.HOSTDNS) {
       temp.HOSTDNS = options.HOSTDNS;
     } else if (req) {
-          dns.reverse(req.connection.remoteAddress, function(err, domains) {
-      temp.HOSTDNS = (domains && domains[0]) ? domains[0] : req.headers.host;
-    });
+      dns.reverse(req.connection.remoteAddress, function(err, domains) {
+        temp.HOSTDNS = (domains && domains[0]) ? domains[0] : req.headers.host;
+      });
     } else {
       reject("Not able to get the HOSTDNS from req object or options object.");
     }
@@ -288,7 +284,7 @@ function sendFailureEmail(auditData, callback) {
   console.log("## Calling sendFailureEmail.");
   try {
     const transporter = nodemailer.createTransport(auditData.SMTP_EMAIL_UPS);
-    console.log(transporter);
+    console.log(auditData.SMTP_EMAIL_UPS);
 
     const mailOptions = {
       "from": auditData.APP_XSA_JOBS.mailForm,
@@ -302,6 +298,10 @@ function sendFailureEmail(auditData, callback) {
                   <br/> This is a auto generated message, please do not reply
                   <br/> Regards`
     };
+
+    console.log("mailOptions");
+    console.log(mailOptions);
+
     transporter.sendMail(mailOptions, function(error, info) {
       if (error) {
         console.log("## Error to sending email.");
@@ -314,6 +314,7 @@ function sendFailureEmail(auditData, callback) {
     });
   } catch (throwingError) {
     console.log("## Error to sending email : " + throwingError);
+    console.log(throwingError);
     callback(null);
   }
 }
