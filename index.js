@@ -32,8 +32,9 @@ exports.validateRequest = async function(req, options, callback) {
     if (typeof options !== "object") {
       return callback("Enter the correct options which type is object.");
     }
-
+    // Validating data which comes in request and options object.
     let auditData = await validateInputData(req, options);
+    // Finding application enable flag
     let applicationEnableFlag = await checkApplicationEnableFlag(auditData);
 
     if (!applicationEnableFlag) {
@@ -56,7 +57,8 @@ exports.validateRequest = async function(req, options, callback) {
     auditData.ENCRYPTED = cipher.update(userAndPass, 'utf8', 'hex') + cipher.final('hex');
     delete auditData.SERVICES;
 
-    console.log("### Calling Framework : " + auditData.VALIDATE_ROUTE + " ###");
+    // Calling framework to validate request.
+    console.log("## Calling Framework : " + auditData.VALIDATE_ROUTE + " ##");
     axios.post(auditData.VALIDATE_ROUTE, {
         "auditData": auditData
       }, config)
@@ -73,10 +75,10 @@ exports.validateRequest = async function(req, options, callback) {
         auditData.APP_ENABLE_FLAG = false;
         if (error.response && error.response.status && error.response.status > 500) {
           // If App Integration Management Framework is not reachable then skipping validation but executing HANA model and sending email.
-          console.log("App Integration Management Framework is Not Reachable, Skipping Validation.");
+          console.log("## App Integration Management Framework is Not Reachable, Skipping Validation.");
           console.log("## Status code : " + error.response.status);
           console.log("## Error.response.headers : " + error.response.headers);
-
+          // Sending failure email if framework server is down/not responding.
           sendFailureEmail(auditData, (emailError, emailResp) => {
             delete auditData.SMTP_EMAIL_UPS;
             delete auditData.APP_XSA_JOBS;
@@ -91,7 +93,7 @@ exports.validateRequest = async function(req, options, callback) {
           // Something happened in setting up the request that triggered an Error
           console.log("## Error to calling framework : " + error.message);
           auditData.ERROR = error.message;
-
+          // Sending failure email if framework server is down/not responding.
           sendFailureEmail(auditData, (emailError, emailResp) => {
             delete auditData.SMTP_EMAIL_UPS;
             delete auditData.APP_XSA_JOBS;
@@ -108,6 +110,7 @@ exports.validateRequest = async function(req, options, callback) {
   }
 };
 
+// Function for to save the audit log details after executed HANA model.
 exports.saveAuditDetails = function(req, res, RECORDCOUNT) {
   console.log("## Calling saveAuditDetails.");
   try {
@@ -127,13 +130,13 @@ exports.saveAuditDetails = function(req, res, RECORDCOUNT) {
         "password": DECRYPTED.split("<@#@#@>")[1]
       };
 
-      console.log("### Calling Framework : " + auditData.AUDIT_ROUTE + " ###");
+      console.log("## Calling Framework : " + auditData.AUDIT_ROUTE + " ###");
       axios.post(auditData.AUDIT_ROUTE, {
           "auditData": auditData
         }, config)
         .then(function(resp) {
           console.log(`## Successfully saved audit details for request ID : "${auditData.REQUESTID}"`);
-          if(resp && resp.data){
+          if (resp && resp.data) {
             console.log(resp.data);
           }
         })
@@ -145,11 +148,12 @@ exports.saveAuditDetails = function(req, res, RECORDCOUNT) {
       console.log("## Application enable flag is not enabled, Skipping audit log store data.");
     }
   } catch (throwingError) {
-    console.log('## Inside saveAuditDetails catch.');
+    console.log('## Inside catch of saveAuditDetails.');
     console.log(throwingError);
   }
 }
 
+// Function for validate request and options object data.
 function validateInputData(req, options) {
   console.log("## Calling validateInputData.");
   return new Promise((resolve, reject) => {
@@ -223,9 +227,14 @@ function validateInputData(req, options) {
       reject("Not able to get the PARAMETER from req object or options object.");
     }
 
-    dns.reverse(req.connection.remoteAddress, function(err, domains) {
-      temp.HOSTDNS = (domains && domains[0]) ? domains[0] : req.headers.host;
-    });
+    // Getting host dns from request object.
+    if (options.HOSTDNS) {
+      temp.HOSTDNS = options.HOSTDNS;
+    } else if (req) {
+      dns.reverse(req.connection.remoteAddress, function(err, domains) {
+        temp.HOSTDNS = (domains && domains[0]) ? domains[0] : req.headers.host;
+      });
+    }
 
     // Getting Host Dns name from request object.
     if (options.HOSTDNS) {
@@ -250,6 +259,7 @@ function validateInputData(req, options) {
   });
 }
 
+// Function for checking application enable flag.
 function checkApplicationEnableFlag(auditData) {
   console.log("## Calling checkApplicationEnableFlag.");
 
@@ -284,7 +294,7 @@ function checkApplicationEnableFlag(auditData) {
   });
 }
 
-// To send the failure email.
+// Function for to send the failure email.
 function sendFailureEmail(auditData, callback) {
   console.log("## Calling sendFailureEmail.");
   try {
@@ -302,7 +312,7 @@ function sendFailureEmail(auditData, callback) {
                   <br/> Regards`
     };
 
-    console.log("mailOptions");
+    console.log("## Mail options to send email.");
     console.log(mailOptions);
 
     transporter.sendMail(mailOptions, function(error, info) {
