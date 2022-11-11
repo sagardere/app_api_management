@@ -54,17 +54,17 @@ exports.validateRequest = async function(req, options, callback) {
     const userAndPass = auditData.APP_XSA_JOBS.userName + "<@#@#@>" + auditData.APP_XSA_JOBS.password;
     const cipher = crypto.createCipheriv(algorithm, key, iv);
     auditData.ENCRYPTED = cipher.update(userAndPass, 'utf8', 'hex') + cipher.final('hex');
-
-    delete auditData.APP_XSA_JOBS;
     delete auditData.SERVICES;
 
-    console.log("### Calling Framework URL : " + auditData.VALIDATE_ROUTE + " ###");
+    console.log("### Calling Framework : " + auditData.VALIDATE_ROUTE + " ###");
     axios.post(auditData.VALIDATE_ROUTE, {
         "auditData": auditData
       }, config)
       .then(function(resp) {
         console.log("## Successfully validated request in App Integration Management Framework.");
         auditData.REQUESTID = (resp && resp.data && resp.data.REQUESTID) ? resp.data.REQUESTID : null;
+        delete auditData.SMTP_EMAIL_UPS;
+        delete auditData.APP_XSA_JOBS;
         return callback(null, {
           "auditData": auditData
         });
@@ -79,6 +79,7 @@ exports.validateRequest = async function(req, options, callback) {
 
           sendFailureEmail(auditData, (emailError, emailResp) => {
             delete auditData.SMTP_EMAIL_UPS;
+            delete auditData.APP_XSA_JOBS;
             return callback(null, {
               "auditData": auditData
             });
@@ -93,6 +94,7 @@ exports.validateRequest = async function(req, options, callback) {
 
           sendFailureEmail(auditData, (emailError, emailResp) => {
             delete auditData.SMTP_EMAIL_UPS;
+            delete auditData.APP_XSA_JOBS;
             return callback(null, {
               "auditData": auditData
             });
@@ -125,12 +127,15 @@ exports.saveAuditDetails = function(req, res, RECORDCOUNT) {
         "password": DECRYPTED.split("<@#@#@>")[1]
       };
 
+      console.log("### Calling Framework : " + auditData.AUDIT_ROUTE + " ###");
       axios.post(auditData.AUDIT_ROUTE, {
           "auditData": auditData
         }, config)
         .then(function(resp) {
           console.log(`## Successfully saved audit details for request ID : "${auditData.REQUESTID}"`);
-          console.log(resp);
+          if(resp && resp.data){
+            console.log(resp.data);
+          }
         })
         .catch(function(error) {
           console.log(`## Error to saving audit details for request ID : "${auditData.REQUESTID}"`);
@@ -284,8 +289,6 @@ function sendFailureEmail(auditData, callback) {
   console.log("## Calling sendFailureEmail.");
   try {
     const transporter = nodemailer.createTransport(auditData.SMTP_EMAIL_UPS);
-    console.log(auditData.SMTP_EMAIL_UPS);
-
     const mailOptions = {
       "from": auditData.APP_XSA_JOBS.mailForm,
       "to": auditData.APP_XSA_JOBS.failureMailTo,
