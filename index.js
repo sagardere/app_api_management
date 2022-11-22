@@ -140,7 +140,7 @@ function getAuditData(req) {
     temp.HOSTDNS = "";
     temp.ENVIRONMENT = "";
 
-    temp.APPNAME = "app_mendix_psam"; // VCAP_APPLICATION.application_name.split("-")[0].toUpperCase();
+    temp.APPNAME = "APP_MENDIX_PSAM"; // VCAP_APPLICATION.application_name.split("-")[0].toUpperCase();
     temp.FUNCTIONNAME = (url.parse(req.url).pathname).split("/").pop() || ("/");
     temp.IPADDRESS = (req.header("x-forwarded-for")) ? req.header("x-forwarded-for") : req.connection.remoteAddress;
     temp.PARAMETER = req.body ? req.body : {};
